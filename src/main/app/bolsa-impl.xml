@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+    <flow name="getEmpresaBolsaFlow">
+        <http:request config-ref="HTTP_Request_Configuration_MODApis" path="Lookup/json" method="GET" doc:name="HTTP Lookup">
+            <http:request-builder>
+                <http:query-param paramName="input" value="#[message.inboundProperties.'http.query.params'.pesquisa]"/>
+            </http:request-builder>
+        </http:request>
+        <dw:transform-message doc:name="Transform Message" metadata:id="b30717d4-6564-4ab8-82f2-e88e880fcb8b">
+            <dw:input-payload doc:sample="Lookup.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	bolsa: payload01.Exchange,
+	codigo: payload01.Symbol,
+	nome: payload01.Name
+})]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="getCotacaoEmpresaBolsaFlow">
+        <http:request config-ref="HTTP_Request_Configuration_MODApis" path="Quote/json" method="GET" doc:name="HTTP Quote">
+            <http:request-builder>
+                <http:query-param paramName="symbol" value="#[message.inboundProperties.'http.query.params'.codigo]"/>
+            </http:request-builder>
+        </http:request>
+        <validation:is-true exceptionClass="br.com.banco.exception.CotacaoNotFoundException" expression="#[message.payloadAs(java.lang.String).contains('&quot;Status&quot;:&quot;SUCCESS&quot;')]" doc:name="Validate response"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="b9cc8898-2828-4684-a014-677ac0893bc7">
+            <dw:input-payload doc:sample="Quote.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	codigoEmpresa: payload.Symbol,
+	data: payload.Timestamp as :datetime {format: "EEE MMM d HH:mm:ss 'UTC'XXX yyyy"} as :string {format: "yyyy-MM-dd'T'HH:mm:ss"},
+	moeda: 'USD',
+	valor: payload.LastPrice
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+</mule>

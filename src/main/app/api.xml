@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">   
+    <flow name="api-main">
+        <http:listener config-ref="api-httpListenerConfig" path="/api/*" doc:name="HTTP" />
+        <apikit:router config-ref="api-config" doc:name="APIkit Router" />
+        <exception-strategy ref="api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy" />
+    </flow>
+    <flow name="api-console">
+        <http:listener config-ref="api-httpListenerConfig" path="/console/*" doc:name="HTTP" />
+        <apikit:console config-ref="api-config" doc:name="APIkit Console" />
+    </flow>
+    <flow name="get:/clientes:api-config">
+        <flow-ref name="getClientesFlow" doc:name="getClientesFlow" />
+    </flow>
+    <flow name="get:/clientes/{id_cliente}:api-config">
+        <flow-ref name="getClienteFlow" doc:name="getClienteFlow"/>
+    </flow>
+    <flow name="post:/clientes:application/json:api-config">
+        <flow-ref name="insertClienteFlow" doc:name="insertClienteFlow" />
+    </flow>
+    <flow name="get:/clientes/{id_cliente}/contas:api-config">
+        <flow-ref name="getContasFlow" doc:name="getContasFlow"/>
+    </flow>
+    <flow name="post:/clientes/{id_cliente}/contas:application/json:api-config">
+        <flow-ref name="insertContasFlow" doc:name="insertContasFlow"/>
+    </flow>
+    <flow name="get:/clientes/{id_cliente}/contas/{id_conta}:api-config">
+        <flow-ref name="getContaFlow" doc:name="getContaFlow"/>
+    </flow>
+    <flow name="patch:/clientes/{id_cliente}/contas/{id_conta}:application/json:api-config">
+        <flow-ref name="updateSaldoContaFlow" doc:name="updateSaldoContaFlow"/>
+    </flow>
+    <flow name="get:/bolsa/empresas:api-config">
+        <flow-ref name="getEmpresaBolsaFlow" doc:name="getEmpresaBolsaFlow"/>
+    </flow>
+    <flow name="get:/bolsa/cotacao:api-config">
+        <flow-ref name="getCotacaoEmpresaBolsaFlow" doc:name="getCotacaoEmpresaBolsaFlow"/>
+    </flow>
+    <apikit:mapping-exception-strategy name="api-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <apikit:exception value="br.com.banco.exception.ClienteNotFoundException"/>
+            <apikit:exception value="br.com.banco.exception.ContaNotFoundException"/>
+            <apikit:exception value="br.com.banco.exception.CotacaoNotFoundException"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;mensagem&quot;: &quot;Recurso n&#227;o encontrado&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;mensagem&quot;: &quot;M&#233;todo HTTP n&#227;o permitido&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;mensagem&quot;: &quot;Tipo de m&#237;dia n&#227;o suportada&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;mensagem&quot;: &quot;N&#227;o aceit&#225;vel&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <apikit:exception value="org.mule.extension.validation.api.ValidationException"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;mensagem&quot;: &quot;Requisi&#231;&#227;o inv&#225;lida&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>    
+</mule>

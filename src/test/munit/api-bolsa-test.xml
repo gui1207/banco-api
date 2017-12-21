@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
+    <spring:beans>       
+        <spring:import resource="classpath:api.xml" />
+        <spring:import resource="classpath:global.xml"/>
+        <spring:import resource="classpath:cliente-impl.xml"/>
+        <spring:import resource="classpath:conta-impl.xml"/>
+        <spring:import resource="classpath:bolsa-impl.xml"/>
+    </spring:beans>    
+    <munit:config mock-connectors="false" mock-inbounds="false" doc:name="MUnit configuration"/>
+    <http:request-config name="HTTP_Request_Configuration" host="localhost" port="8081" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <munit:test name="get:/bolsa/empresas:api-config-200-application/json-FlowTest" description="Verifying functionality of [get:/bolsa/empresas:api-config-200-application/json]">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['HTTP Lookup']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[getResource('mock/Lookup.json').asStream()]"/>
+        </mock:when>
+        <set-variable variableName="pesquisa" value="#['MULE']" doc:name="pesquisa" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/bolsa/empresas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+                <http:query-param paramName="pesquisa" value="#[flowVars['pesquisa']]" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="assert that - http.status eq 200" />
+        <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/get_200_bolsa_empresas_application_json.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>
+    <munit:test name="get:/bolsa/cotacao:api-config-200-application/json-FlowTest" description="Verifying functionality of [get:/bolsa/cotacao:api-config-200-application/json]">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['HTTP Quote']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[getResource('mock/Quote.json').asStream()]"/>
+        </mock:when>
+        <set-variable variableName="codigo" value="#['MULE']" doc:name="codigo" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/bolsa/cotacao" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+                <http:query-param paramName="codigo" value="#[flowVars['codigo']]" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="assert that - http.status eq 200" />
+        <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/get_200_bolsa_cotacao_application_json.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>
+    <munit:test name="get:/bolsa/cotacao:api-config-404-application/json-FlowTest" description="Verifying functionality of [get:/bolsa/cotacao:api-config-404-application/json]">
+        <mock:when messageProcessor=".*:.*" doc:name="Mock">
+            <mock:with-attributes>
+                <mock:with-attribute name="doc:name" whereValue="#['HTTP Quote']"/>
+            </mock:with-attributes>
+            <mock:then-return payload="#[getResource('mock/Quote_Fail.json').asStream()]"/>
+        </mock:when>
+        <set-variable variableName="codigo" value="#['ZZZ']" doc:name="codigo" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/bolsa/cotacao" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+                <http:query-param paramName="codigo" value="#[flowVars['codigo']]" />
+            </http:request-builder>
+            <http:success-status-code-validator values="200..599"/>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(404))]" doc:name="assert that - http.status eq 404" />
+    </munit:test>
+    
+</mule>

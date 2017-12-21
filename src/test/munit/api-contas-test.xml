@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd">
+    <spring:beans>
+        <spring:import resource="classpath:api.xml" />
+        <spring:import resource="classpath:global.xml"/>
+        <spring:import resource="classpath:cliente-impl.xml"/>
+        <spring:import resource="classpath:conta-impl.xml"/>
+        <spring:import resource="classpath:bolsa-impl.xml"/>
+    </spring:beans>
+    <munit:config mock-connectors="false" mock-inbounds="false" doc:name="MUnit configuration"/>
+    <http:request-config name="HTTP_Request_Configuration" host="localhost" port="8081" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <munit:before-suite name="api-contas-testBefore_Suite" description="MUnit Test">
+    	<set-payload value="#[getResource('scaffolder/request/post_clientes_application_json.json').asString()]" doc:name="Set Payload"/>
+        <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/clientes" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(204))]" doc:name="assert that - http.status eq 204" />
+        <munit:assert-true message="Location header is not correct!" condition="#[messageInboundProperty('location').is(eq('http://localhost:8081/api/clientes/1'))]" doc:name="Assert Location Header"/>    
+    </munit:before-suite>
+    <munit:test name="post:/clientes/id_cliente/contas:application/json:api-config-204--FlowTest" description="Verifying functionality of [post:/clientes/id_cliente/contas:application/json:api-config-204-]">
+        <set-payload value="#[getResource('scaffolder/request/post_clientes_{id_cliente}_contas_application_json.json').asString()]" doc:name="Set Payload"/>
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/clientes/#[flowVars['id_cliente']]/contas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(204))]" doc:name="assert that - http.status eq 204" />
+        <munit:assert-true message="Location header is not correct!" condition="#[messageInboundProperty('location').is(eq('http://localhost:8081/api/clientes/1/contas/1'))]" doc:name="Assert Location Header"/>
+    </munit:test>
+    <munit:test name="post:/clientes/id_cliente/contas:application/json:api-config-400--RAMLValidation" description="Verifying functionality sending invalid data validated by RAML">
+        <set-payload value="#[getResource('scaffolder/request/post_clientes_{id_cliente}_contas_application_json_RAMLInvalid.json').asString()]" doc:name="Set Payload"/>
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/clientes/#[flowVars['id_cliente']]/contas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json" />
+            </http:request-builder>
+            <http:success-status-code-validator values="200..599"/>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(400))]" doc:name="assert that - http.status eq 400" />
+        <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/post_clientes_{id_cliente}_contas_application_json_Invalid.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>
+    <munit:test name="post:/clientes/id_cliente/contas:application/json:api-config-400--SQLException" description="Verifying functionality sending invalid data and getting SQLException">
+        <set-payload value="#[getResource('scaffolder/request/post_clientes_{id_cliente}_contas_application_json_SQLException.json').asString()]" doc:name="Set Payload"/>
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/clientes/#[flowVars['id_cliente']]/contas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json" />
+            </http:request-builder>
+            <http:success-status-code-validator values="200..599"/>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(400))]" doc:name="assert that - http.status eq 400" />
+         <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/post_clientes_{id_cliente}_contas_application_json_SQLException.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test> 
+    <munit:test name="post:/clientes/id_cliente/contas:application/json:api-config-400--SQLExceptionDuplicate" description="Verifying functionality sending invalid data and getting SQLException Duplicated">
+        <set-payload value="#[getResource('scaffolder/request/post_clientes_{id_cliente}_contas_application_json.json').asString()]" doc:name="Set Payload"/>
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/clientes/#[flowVars['id_cliente']]/contas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json" />
+            </http:request-builder>
+            <http:success-status-code-validator values="200..599"/>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(400))]" doc:name="assert that - http.status eq 400" />
+         <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/post_clientes_{id_cliente}_contas_application_json_SQLException_Duplicated.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>  
+    <munit:test name="get:/clientes/id_cliente/contas:api-config-200-application/json-FlowTest" description="Verifying functionality of [get:/clientes/id_cliente/contas:api-config-200-application/json]">
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/clientes/#[flowVars['id_cliente']]/contas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="assert that - http.status eq 200" />
+        <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/get_200_clientes_{id_cliente}_contas_application_json.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>
+    <munit:test name="get:/clientes/id_cliente/contas:api-config-404-application/json-FlowTest" description="Verifying functionality of getting Contas from onexistent Cliente">
+        <set-variable variableName="id_cliente" value="#[2]" doc:name="id_cliente" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/clientes/#[flowVars['id_cliente']]/contas" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+            </http:request-builder>
+            <http:success-status-code-validator values="200..599"/>
+        </http:request>        
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(404))]" doc:name="assert that - http.status eq 404" />        
+    </munit:test>
+    <munit:test name="get:/clientes/id_cliente/contas/id_conta:api-config-200-application/json-FlowTest" description="Verifying functionality of [get:/clientes/id_cliente/contas/id_conta:api-config-200-application/json]">
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <set-variable variableName="id_conta" value="#[1]" doc:name="id_conta" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/clientes/#[flowVars['id_cliente']]/contas/#[flowVars['id_conta']]" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="assert that - http.status eq 200" />
+        <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/get_200_clientes_{id_cliente}_contas_{id_conta}_application_json.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>
+    <munit:test name="get:/clientes/id_cliente/contas/id_conta:api-config-404-application/json-FlowTest" description="Verifying functionality of [get:/clientes/id_cliente/contas/id_conta:api-config-200-application/json]">
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <set-variable variableName="id_conta" value="#[2]" doc:name="id_conta" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/clientes/#[flowVars['id_cliente']]/contas/#[flowVars['id_conta']]" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+            </http:request-builder>
+            <http:success-status-code-validator values="200..599"/>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(404))]" doc:name="assert that - http.status eq 404" />
+    </munit:test>
+    <munit:test name="patch:/clientes/id_cliente/contas/id_conta:application/json:api-config-204--FlowTest" description="Verifying functionality of [patch:/clientes/id_cliente/contas/id_conta:application/json:api-config-204-]">
+        <set-payload value="#[getResource('scaffolder/request/patch_clientes_{id_cliente}_contas_{id_conta}_application_json.json').asString()]" doc:name="Set Payload"/>
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <set-variable variableName="id_conta" value="#[1]" doc:name="id_conta" />
+        <http:request config-ref="HTTP_Request_Configuration" method="PATCH" path="/clientes/#[flowVars['id_cliente']]/contas/#[flowVars['id_conta']]" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Content-Type" value="application/json" />
+            </http:request-builder>            
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(204))]" doc:name="assert that - http.status eq 204" />
+        <munit:assert-true message="Location header is not correct!" condition="#[messageInboundProperty('location').is(eq('http://localhost:8081/api/clientes/1/contas/1'))]" doc:name="Assert Location Header"/>
+    </munit:test>
+    <munit:test name="get:/clientes/id_cliente/contas/id_conta:api-config-200-application/json-AfterPatch" description="Verifying functionality of [get:/clientes/id_cliente/contas/id_conta:api-config-200-application/json]">
+        <set-variable variableName="id_cliente" value="#[1]" doc:name="id_cliente" />
+        <set-variable variableName="id_conta" value="#[1]" doc:name="id_conta" />
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="/clientes/#[flowVars['id_cliente']]/contas/#[flowVars['id_conta']]" doc:name="HTTP">
+            <http:request-builder>
+                <http:header headerName="Accept" value="application/json" />
+            </http:request-builder>
+        </http:request>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="assert that - http.status eq 200" />
+        <munit:assert-on-equals message="The response payload is not correct!" expectedValue="#[getResource('scaffolder/response/get_200_clientes_{id_cliente}_contas_{id_conta}_application_json_AfterPatch.json').asString()]" actualValue="#[payload]" doc:name="assert that - payload is as expected" />
+    </munit:test>
+</mule>

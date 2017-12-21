@@ -1,0 +1,235 @@
+#%RAML 1.0
+version: 1.0
+title: API Banco
+mediaType: application/json
+
+baseUri: http://localhost:8081
+
+types:
+  AtualizaSaldo:
+    type: object
+    properties:
+      novoSaldo:
+        description: Valor do novo saldo
+        required: true
+        type: number
+  InfoCliente:
+    type: object
+    properties:
+      nome:
+        description: Nome do cliente
+        required: true
+        type: string
+      cpf:
+        description: CPF do cliente
+        required: true
+        type: string
+      endereco:
+        description: Endereço do cliente
+        required: true
+        type: string
+  Cliente:
+    type: InfoCliente
+    properties:
+      id:
+        description: Id da conta
+        required: true
+        type: integer
+  Conta:
+    type: InfoConta
+    properties:
+      id:
+        description: Id da conta
+        required: true
+        type: integer
+  InfoConta:
+    type: object
+    properties:
+      agencia:
+        description: Código da agência
+        required: true
+        type: integer
+      conta:
+        description: Número da conta
+        required: true
+        type: integer
+      tipoConta:
+        description: Tipo da conta
+        required: true
+        enum: [poupanca, corrente]
+      saldo:
+        description: Saldo da conta
+        required: true
+        type: number
+  Empresa:
+    type: object
+    properties:
+      codigo:
+        required: true
+        type: string
+      nome:
+        description: Nome da empresa na bolsa de valores
+        required: true
+        type: string
+      bolsa:
+        description: Bolsa de valores onde a empresa esta listada
+        required: true
+        type: string
+  Cotacao:
+    type: object
+    properties:
+      codigoEmpresa:
+        required: true
+        type: string
+      data:
+        description: Data da cotação na bolsa de valores
+        required: true
+        type: datetime-only
+      valor:
+        description: Valor da cotação da empresa na bolsa de valores
+        required: true
+        type: number
+      moeda:
+        description: Moeda da cotação
+        required: true
+        type: string
+
+resourceTypes:
+  cliente:
+    uriParameters:
+      id_cliente:
+        description: Id do cliente
+        type: integer
+  cliente-conta:
+    type: cliente
+    uriParameters:
+      id_conta:
+        description: Id da conta
+        type: integer
+
+traits: 
+  cotacaoBolsa:
+    queryParameters:
+       codigo:
+         description: Código da empresa listada na bolsa de valores
+         required: true
+         type: string
+
+/clientes:
+  description: Resource para clientes e suas contas
+  get:
+    description: Lista todos os clientes
+    queryParameters:
+      cpf:
+        description: Busca cliente pelo CPF
+        required: false
+        type: string
+        pattern: "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
+    responses:
+      200:
+        body:
+          application/json:
+            type: Cliente[]
+            example: |
+              [{"cpf":"462.366.312-47","endereco":"Rua dos Santos, 100","id":1,"nome":"João da Silva"},{"cpf":"256.401.654-56","endereco":"Rua dos Andradas, 100","id":2,"nome":"Joaquim dos Santos"}]
+  post:
+    description: Cria novo cliente
+    body:
+      application/json:
+        type: InfoCliente
+        example: |
+          {"nome":"João da Silva","cpf":"462.366.312-47","endereco":"Rua dos Santos, 100"}
+    responses:
+      204:
+        headers:
+          Location:
+            description: URI para o novo cliente criado
+  /{id_cliente}:
+    type: cliente
+    get:
+      description: Retorna informações do cliente
+      responses:
+        200:
+          body:
+            application/json:
+              type: Cliente
+              example: |
+                {"cpf":"462.366.312-47","endereco":"Rua dos Santos, 100","id":1,"nome":"João da Silva"}
+  /{id_cliente}/contas:
+    type: cliente
+    get:
+      description: Lista todas as consta do cliente
+      responses:
+        200:
+          body:
+            application/json:
+              type: Conta[]
+              example: | 
+                [{"agencia":1,"conta":1,"id":1,"saldo":400,"tipoConta":"corrente"},{"agencia":1,"conta":2,"id":4,"saldo":600,"tipoConta":"poupanca"}]
+    post:
+      description: Cria nova conta para o cliente
+      body:
+        application/json:
+          type: InfoConta
+          example: |
+            {"agencia":1, "conta": 1, "saldo" : 400, "tipoConta": "corrente"}
+      responses:
+        204:
+          headers:
+            Location:
+              description: URI para a nova conta criada
+  /{id_cliente}/contas/{id_conta}:
+    type: cliente-conta
+    get:
+      description: Retorna informações da conta
+      responses:
+        200:
+          body:
+            application/json:
+              type: Conta
+              example: |
+                {"agencia":1,"conta":1,"id":1,"saldo":400,"tipoConta":"corrente"}                
+    patch:
+      description: Atualiza saldo da conta
+      body:
+        application/json:
+          type: AtualizaSaldo
+          example: |
+            {"novoSaldo": 500.55}
+      responses:
+        204:
+          headers:
+            Location:
+              description: URI para a conta modificada
+/bolsa:
+  description: Resource para bolsa de valores
+  /empresas:
+    get:
+      description: Retorna empresas listadas na bolsa de valores
+      queryParameters:
+        pesquisa:
+          description: Nome ou código da empresa listada na bolsa de valores
+          required: true
+          type: string
+      responses:
+        200:
+          body:
+            application/json:
+              type: Empresa[]
+              example: |
+                [{"bolsa":"NYSE","codigo":"MULE","nome":"Mulesoft Inc"},{"bolsa":"BATS Trading Inc","codigo":"MULE","nome":"Mulesoft Inc"}]
+  /cotacao:
+    get:
+     description: Retorna a cotação de uma empresa listada na bolsa
+     queryParameters:
+       codigo:
+         description: Código da empresa listada na bolsa de valores
+         required: true
+         type: string
+     responses:
+       200:
+         body:
+           application/json:
+             type: Cotacao
+             example: |
+              {"codigoEmpresa":"MULE","data":"2017-12-20T16:02:02","moeda":"USD","valor":21.95}

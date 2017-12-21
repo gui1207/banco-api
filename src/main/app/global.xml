@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+	<http:listener-config name="api-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <apikit:config name="api-config" raml="api.raml" consoleEnabled="false" doc:name="Router"/>
+	<db:generic-config name="Generic_Database_Configuration" url="jdbc:h2:mem:test;INIT=RUNSCRIPT FROM 'classpath:script.sql'" driverClassName="org.h2.Driver" doc:name="Generic Database Configuration">
+        <db:pooling-profile maxPoolSize="1" minPoolSize="1"/>
+    </db:generic-config>
+    <http:request-config name="HTTP_Request_Configuration_MODApis" host="dev.markitondemand.com" port="80" basePath="MODApis/Api/v2" doc:name="HTTP Request Configuration"/>
+    <choice-exception-strategy name="globalChoiceExceptionStrategy">
+        <catch-exception-strategy when="#[exception.causedBy(java.sql.SQLException)]" doc:name="Catch Exception Strategy">
+            <choice doc:name="Choice">
+                <when expression="#[exception.getCauseException().getMessage().contains('Unique index or primary key violation')]">
+                    <set-payload value="{ &quot;mensagem&quot;: &quot;Registro duplicado&quot; }" doc:name="Set Payload Duplicated"/>
+                    <flow-ref name="http400Flow" doc:name="http400Flow"/>
+                </when>
+                <when expression="#[exception.getCauseException().getMessage().contains('Value too long for column')]">
+                    <set-payload value="{ &quot;mensagem&quot;: &quot;Dados inv&#225;lidos&quot; }" doc:name="Set Payload Invalid"/>
+                    <flow-ref name="http400Flow" doc:name="http400Flow"/>
+                </when>
+                <otherwise>
+                    <set-property propertyName="http.status" value="#[500]" doc:name="Property HTTP 500"/>
+                     <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+                    <set-payload value="{ &quot;mensagem&quot;: &quot;#[exception.getCauseException().getMessage().replaceAll(&quot;\&quot;&quot;, &quot;\'&quot;)]&quot; }" doc:name="Set Payload"/>
+                </otherwise>
+            </choice>
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+    <sub-flow name="http400Flow">
+        <set-property propertyName="http.status" value="#[400]" doc:name="Property HTTP 400"/>
+        <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+    </sub-flow>
+
+</mule>
